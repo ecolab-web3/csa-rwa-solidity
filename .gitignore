@@ -1,0 +1,15 @@
+# Log and environment files
+.env
+*.log
+
+# Node.js dependencies
+node_modules/
+
+# Framework build and cache files (Hardhat/Foundry)
+cache/
+artifacts/
+out/
+
+# System files
+.DS_Store
+Thumbs.db
