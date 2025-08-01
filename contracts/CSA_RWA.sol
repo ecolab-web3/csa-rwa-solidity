@@ -147,7 +147,7 @@ contract CSA_RWA is ERC721Enumerable, Ownable {
     /**
      * @dev See {IERC165-supportsInterface}. This is required for contracts that inherit from multiple standards.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, Ownable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
 }
