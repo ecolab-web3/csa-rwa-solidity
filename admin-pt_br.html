@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Administração da CSA</title>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 700px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; margin-top: 10px; }
+        button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
+        input { font-size: 1em; padding: 0.5em; width: 95%; margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; word-break: break-all; }
+        .error-message { color: #d9534f; }
+        .success-message { color: #5cb85c; }
+    </style>
+</head>
+<body>
+    <h1>Painel de Administração da CSA</h1>
+    <p>Use esta página para gerenciar seu contrato e criar novas temporadas.</p>
+    
+    <button id="connectButton">Conectar Carteira como Administrador</button>
+    <hr>
+    
+    <div id="adminPanel" style="display:none;">
+        <h2>Criar Nova Temporada</h2>
+        <form id="seasonForm">
+            <div>
+                <label for="seasonName">Nome da Temporada:</label>
+                <input type="text" id="seasonName" required placeholder="Ex: Colheita de Inverno 2024">
+            </div>
+            <div>
+                <label for="seasonPrice">Preço da Cota (em AVAX):</label>
+                <input type="text" id="seasonPrice" required placeholder="Ex: 1.5">
+            </div>
+            <div>
+                <label for="seasonCapacity">Capacidade (Nº de Membros):</label>
+                <input type="number" id="seasonCapacity" required placeholder="Ex: 100">
+            </div>
+            <div>
+                <label for="seasonDuration">Duração (em semanas):</label>
+                <input type="number" id="seasonDuration" required placeholder="Ex: 12">
+            </div>
+            <button type="submit" id="createSeasonButton">Criar Temporada</button>
+        </form>
+    </div>
+
+    <div id="accessDenied" style="display:none;">
+        <h2 class="error-message">Acesso Negado</h2>
+        <p>A carteira conectada não é a proprietária deste contrato. Apenas o administrador pode acessar esta página.</p>
+    </div>
+
+    <div id="status">Por favor, conecte sua carteira para continuar...</div>
+
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const statusDiv = document.getElementById('status');
+        const adminPanel = document.getElementById('adminPanel');
+        const accessDenied = document.getElementById('accessDenied');
+        const seasonForm = document.getElementById('seasonForm');
+        const createSeasonButton = document.getElementById('createSeasonButton');
+
+        // Inputs do formulário
+        const seasonNameInput = document.getElementById('seasonName');
+        const seasonPriceInput = document.getElementById('seasonPrice');
+        const seasonCapacityInput = document.getElementById('seasonCapacity');
+        const seasonDurationInput = document.getElementById('seasonDuration');
+        
+        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF"; 
+        
+        const contractABI = [
+            "function createNewSeason(string name, uint256 price, uint256 capacity, uint256 durationInWeeks)",
+            "function owner() view returns (address)"
+        ];
+
+        let provider, signer, contract;
+
+        connectButton.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    const userAddress = await signer.getAddress();
+                    const contractOwner = await contract.owner();
+
+                    connectButton.style.display = 'none';
+
+                    // LÓGICA DE SEGURANÇA
+                    if (userAddress.toLowerCase() === contractOwner.toLowerCase()) {
+                        statusDiv.textContent = `Administrador conectado: ${userAddress.substring(0, 6)}...`;
+                        adminPanel.style.display = 'block';
+                    } else {
+                        statusDiv.textContent = `Carteira conectada não é administradora: ${userAddress.substring(0, 6)}...`;
+                        accessDenied.style.display = 'block';
+                    }
+                } catch (error) {
+                    statusDiv.textContent = `Erro ao conectar: ${error.message}`;
+                }
+            } else {
+                statusDiv.textContent = "MetaMask não encontrada!";
+            }
+        });
+
+        seasonForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Impede o recarregamento da página
+
+            const name = seasonNameInput.value;
+            const price = seasonPriceInput.value;
+            const capacity = seasonCapacityInput.value;
+            const duration = seasonDurationInput.value;
+
+            if (!name || !price || !capacity || !duration) {
+                statusDiv.textContent = "Por favor, preencha todos os campos.";
+                return;
+            }
+
+            try {
+                // Converte o preço de AVAX para Wei
+                const priceInWei = ethers.utils.parseEther(price);
+
+                createSeasonButton.disabled = true;
+                statusDiv.innerHTML = `<span class="success-message">Enviando transação... Por favor, confirme na sua carteira.</span>`;
+                
+                const tx = await contract.createNewSeason(name, priceInWei, capacity, duration);
+                statusDiv.textContent = `Transação enviada! Aguardando mineração... Hash: ${tx.hash}`;
+                
+                await tx.wait();
+                
+                statusDiv.innerHTML = `<span class="success-message">Sucesso! Nova temporada "${name}" foi criada!</span>`;
+                createSeasonButton.disabled = false;
+                seasonForm.reset(); // Limpa o formulário
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.innerHTML = `<span class="error-message">Erro ao criar temporada: ${error.reason || error.message}</span>`;
+                createSeasonButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
