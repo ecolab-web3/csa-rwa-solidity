@@ -1,18 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-// Import standard OpenZeppelin contracts. This works automatically in Remix.
-import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/token/ERC721/ERC721.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v5.0.1/contracts/access/Ownable.sol";
 
 /**
  * @title CSA_RWA
- * @author Your Name
+ * @author E-co.lab Dev Team
  * @notice A prototype contract for a Community Supported Agriculture (CSA)
- * using NFTs (ERC721) to represent member shares (RWA).
- * Each NFT represents the right to receive baskets for a specific season.
+ * using NFTs (ERC721Enumerable) to represent member shares (RWA).
+ * Each NFT represents the right to receive a natural product box for a specific season.
  */
-contract CSA_RWA is ERC721, Ownable {
+contract CSA_RWA is ERC721Enumerable, Ownable {
     
     // Struct to define the data for a harvest season
     struct Season {
@@ -31,7 +30,7 @@ contract CSA_RWA is ERC721, Ownable {
     // Mapping from token ID (NFT) to its corresponding season ID
     mapping(uint256 => uint256) public tokenIdToSeasonId;
 
-    // Mapping to track the weekly redemption of baskets
+    // Mapping to track the weekly redemption of a box
     // tokenId => week number => boolean (true if already redeemed)
     mapping(uint256 => mapping(uint256 => bool)) public weeklyRedemptions;
 
@@ -41,7 +40,7 @@ contract CSA_RWA is ERC721, Ownable {
     // Events to notify the frontend about important actions
     event SeasonCreated(uint256 seasonId, string name, uint256 price, uint256 capacity);
     event MembershipPurchased(uint256 seasonId, uint256 tokenId, address member);
-    event BasketRedeemed(uint256 tokenId, uint256 weekNumber);
+    event BoxRedeemed(uint256 tokenId, uint256 weekNumber);
 
     /**
      * @dev The constructor sets the NFT's name and symbol, and the contract owner.
@@ -77,7 +76,7 @@ contract CSA_RWA is ERC721, Ownable {
      * @notice (Owner) Closes sales for a specific season.
      */
     function closeSeasonSales(uint256 seasonId) external onlyOwner {
-        require(seasonId < seasons.length, "CSA: Invalid season");
+        require(seasonId < seasons.length, "CSA: Invalid season ID");
         seasons[seasonId].isOpenForSale = false;
     }
 
@@ -106,10 +105,10 @@ contract CSA_RWA is ERC721, Ownable {
     }
 
     /**
-     * @notice (NFT Owner) Redeems the weekly basket.
+     * @notice (NFT Owner) Redeems the weekly box.
      * @param tokenId The ID of your membership NFT.
      */
-    function redeemWeeklyBasket(uint256 tokenId) external {
+   function redeemWeeklyBox(uint256 tokenId) external {
         require(_ownerOf(tokenId) == msg.sender, "CSA: You are not the owner of this token");
         
         uint256 seasonId = tokenIdToSeasonId[tokenId];
@@ -119,10 +118,10 @@ contract CSA_RWA is ERC721, Ownable {
 
         uint256 currentWeek = (block.timestamp - season.startTime) / 1 weeks;
 
-        require(!weeklyRedemptions[tokenId][currentWeek], "CSA: This week's basket has already been redeemed");
+        require(!weeklyRedemptions[tokenId][currentWeek], "CSA: This week's box has already been redeemed");
 
         weeklyRedemptions[tokenId][currentWeek] = true;
-        emit BasketRedeemed(tokenId, currentWeek);
+        emit BoxRedeemed(tokenId, currentWeek);
     }
     
     /**
@@ -139,9 +138,16 @@ contract CSA_RWA is ERC721, Ownable {
      * @notice Returns the current week number for a given season.
      */
     function getCurrentWeek(uint256 seasonId) public view returns (uint256) {
-        require(seasonId < seasons.length, "CSA: Invalid season");
+        require(seasonId < seasons.length, "CSA: Invalid season ID");
         Season storage season = seasons[seasonId];
         if (block.timestamp < season.startTime) return 0;
         return (block.timestamp - season.startTime) / 1 weeks;
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}. This is required for contracts that inherit from multiple standards.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, Ownable) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }
