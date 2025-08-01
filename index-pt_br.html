@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSA DApp Prototype</title>
+    <!-- Importa a biblioteca ethers.js -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; }
+        button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
+        input { font-size: 1em; padding: 0.5em; width: 80px; }
+        #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Protótipo de DApp para CSA</h1>
+    <p>Interaja com o contrato inteligente CSA_RWA diretamente daqui!</p>
+    
+    <button id="connectButton">Conectar Carteira</button>
+    <hr>
+    
+    <div id="dapp" style="display:none;">
+        <h3>Resgatar Cesta Semanal</h3>
+        <p>Insira o ID do seu Token (NFT) de membro e clique para resgatar.</p>
+        <label for="tokenId">Token ID:</label>
+        <input type="number" id="tokenId" placeholder="0">
+        <button id="redeemButton">Resgatar Cesta</button>
+    </div>
+
+    <div id="status">Conecte sua carteira para começar...</div>
+
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const redeemButton = document.getElementById('redeemButton');
+        const tokenIdInput = document.getElementById('tokenId');
+        const statusDiv = document.getElementById('status');
+        const dappDiv = document.getElementById('dapp');
+
+        // --- DADOS DO CONTRATO ---
+        // ATENÇÃO: Substituir pelo endereço do seu contrato após o deploy!
+        const contractAddress = "0xSEU_ENDERECO_DE_CONTRATO_AQUI"; 
+        
+        // A ABI (Interface) do seu contrato. Apenas a função que vamos usar.
+        const contractABI = [
+            "function redeemWeeklyBasket(uint256 tokenId)"
+        ];
+
+        let provider;
+        let signer;
+        let contract;
+
+        connectButton.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    // Solicita conexão com a MetaMask
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    
+                    const userAddress = await signer.getAddress();
+                    statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                    connectButton.style.display = 'none';
+                    dappDiv.style.display = 'block';
+
+                } catch (error) {
+                    statusDiv.textContent = `Erro ao conectar: ${error.message}`;
+                }
+            } else {
+                statusDiv.textContent = "MetaMask não encontrada! Por favor, instale a extensão.";
+            }
+        });
+
+        redeemButton.addEventListener('click', async () => {
+            const tokenId = tokenIdInput.value;
+            if (!tokenId) {
+                statusDiv.textContent = "Por favor, insira um Token ID.";
+                return;
+            }
+
+            if (!contract) {
+                statusDiv.textContent = "Contrato não inicializado. Conecte a carteira primeiro.";
+                return;
+            }
+
+            try {
+                redeemButton.disabled = true;
+                statusDiv.textContent = `Enviando transação para resgatar o token #${tokenId}... Por favor, aguarde a confirmação na sua carteira.`;
+                
+                const tx = await contract.redeemWeeklyBasket(tokenId);
+                statusDiv.textContent = `Transação enviada! Hash: ${tx.hash}. Aguardando mineração...`;
+                
+                await tx.wait(); // Espera a transação ser minerada
+                
+                statusDiv.textContent = `Sucesso! Cesta para o Token ID #${tokenId} resgatada com sucesso!`;
+                redeemButton.disabled = false;
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = `Erro ao resgatar: ${error.reason || error.message}`;
+                redeemButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
