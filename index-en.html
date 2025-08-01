@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSA DApp Prototype</title>
+    <!-- Import ethers.js library -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js" type="application/javascript"></script>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
+        button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; }
+        button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
+        input { font-size: 1em; padding: 0.5em; width: 80px; }
+        #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <h1>CSA DApp Prototype</h1>
+    <p>Interact with the CSA_RWA smart contract directly from here!</p>
+    
+    <button id="connectButton">Connect Wallet</button>
+    <hr>
+    
+    <div id="dapp" style="display:none;">
+        <h3>Redeem Weekly Basket</h3>
+        <p>Enter your member Token (NFT) ID and click to redeem.</p>
+        <label for="tokenId">Token ID:</label>
+        <input type="number" id="tokenId" placeholder="0">
+        <button id="redeemButton">Redeem Basket</button>
+    </div>
+
+    <div id="status">Connect your wallet to get started...</div>
+
+    <script>
+        const connectButton = document.getElementById('connectButton');
+        const redeemButton = document.getElementById('redeemButton');
+        const tokenIdInput = document.getElementById('tokenId');
+        const statusDiv = document.getElementById('status');
+        const dappDiv = document.getElementById('dapp');
+
+        // --- CONTRACT DATA ---
+        // ATTENTION: Replace with your deployed contract address!
+        const contractAddress = "0xSEU_ENDERECO_DE_CONTRATO_AQUI"; 
+        
+        // The ABI (Interface) of your contract. Only the function we need.
+        const contractABI = [
+            "function redeemWeeklyBasket(uint256 tokenId)"
+        ];
+
+        let provider;
+        let signer;
+        let contract;
+
+        connectButton.addEventListener('click', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                try {
+                    // Request to connect to MetaMask
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    
+                    provider = new ethers.providers.Web3Provider(window.ethereum);
+                    signer = provider.getSigner();
+                    contract = new ethers.Contract(contractAddress, contractABI, signer);
+                    
+                    const userAddress = await signer.getAddress();
+                    statusDiv.textContent = `Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                    connectButton.style.display = 'none';
+                    dappDiv.style.display = 'block';
+
+                } catch (error) {
+                    statusDiv.textContent = `Error connecting: ${error.message}`;
+                }
+            } else {
+                statusDiv.textContent = "MetaMask not found! Please install the browser extension.";
+            }
+        });
+
+        redeemButton.addEventListener('click', async () => {
+            const tokenId = tokenIdInput.value;
+            if (!tokenId) {
+                statusDiv.textContent = "Please enter a Token ID.";
+                return;
+            }
+
+            if (!contract) {
+                statusDiv.textContent = "Contract not initialized. Please connect your wallet first.";
+                return;
+            }
+
+            try {
+                redeemButton.disabled = true;
+                statusDiv.textContent = `Sending transaction to redeem token #${tokenId}... Please confirm in your wallet.`;
+                
+                const tx = await contract.redeemWeeklyBasket(tokenId);
+                statusDiv.textContent = `Transaction sent! Hash: ${tx.hash}. Awaiting mining...`;
+                
+                await tx.wait(); // Wait for the transaction to be mined
+                
+                statusDiv.textContent = `Success! Basket for Token ID #${tokenId} has been redeemed!`;
+                redeemButton.disabled = false;
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = `Error redeeming: ${error.reason || error.message}`;
+                redeemButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
