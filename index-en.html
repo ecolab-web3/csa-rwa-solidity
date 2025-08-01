@@ -11,7 +11,9 @@
         button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; }
         button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
         input { font-size: 1em; padding: 0.5em; width: 80px; }
+        input:read-only { background-color: #f0f0f0; } /* Style for read-only field */
         #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; word-break: break-all; }
+        .section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #eee; }
     </style>
 </head>
 <body>
@@ -21,11 +23,18 @@
     <button id="connectButton">Connect Wallet</button>
     <hr>
     
-    <div id="dapp" style="display:none;">
+    <div id="buySection" class="section" style="display:none;">
+        <h3>Buy Membership Share (Mint NFT)</h3>
+        <p>It looks like you're not a member yet. Click the button to buy your share!</p>
+        <p><strong>Price:</strong> <span id="priceDisplay">Loading...</span> AVAX</p>
+        <button id="buyButton">Buy Share</button>
+    </div>
+
+    <div id="redeemSection" class="section" style="display:none;">
         <h3>Redeem Weekly Box</h3>
-        <p>Enter your member Token (NFT) ID and click to redeem.</p>
-        <label for="tokenId">Token ID:</label>
-        <input type="number" id="tokenId" placeholder="0">
+        <p>Welcome back! We found your share.</p>
+        <label for="tokenId">Your Token ID:</label>
+        <input type="number" id="tokenId" placeholder="0" readonly> 
         <button id="redeemButton">Redeem Box</button>
     </div>
 
@@ -33,72 +42,102 @@
 
     <script>
         const connectButton = document.getElementById('connectButton');
+        const statusDiv = document.getElementById('status');
+        
+        const buySection = document.getElementById('buySection');
+        const redeemSection = document.getElementById('redeemSection');
+        const buyButton = document.getElementById('buyButton');
+        const priceDisplay = document.getElementById('priceDisplay');
         const redeemButton = document.getElementById('redeemButton');
         const tokenIdInput = document.getElementById('tokenId');
-        const statusDiv = document.getElementById('status');
-        const dappDiv = document.getElementById('dapp');
 
-        // --- CONTRACT DATA ---
-        // ATTENTION: Replace with your deployed contract address!
-        const contractAddress = "0xSEU_ENDERECO_DE_CONTRATO_AQUI"; 
+        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF"; 
         
-        // The ABI (Interface) of your contract. Only the function we need.
         const contractABI = [
-            "function redeemWeeklyBasket(uint256 tokenId)"
+            "function buyMembership() payable",
+            "function redeemWeeklyBox(uint256 tokenId)",
+            "function seasons(uint256) view returns (string name, uint256 membershipPrice, uint256 totalMemberships, uint256 soldMemberships, uint256 startTime, uint256 endTime, bool isOpenForSale)",
+            "function balanceOf(address owner) view returns (uint256)",
+            "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
         ];
 
-        let provider;
-        let signer;
-        let contract;
+        let provider, signer, contract, currentPriceInWei;
+
+        async function updateSeasonInfo() {
+            try {
+                const seasonData = await contract.seasons(0);
+                currentPriceInWei = seasonData.membershipPrice;
+                priceDisplay.textContent = ethers.utils.formatEther(currentPriceInWei);
+            } catch (error) {
+                priceDisplay.textContent = "Error";
+                console.error("Error fetching season data:", error);
+            }
+        }
 
         connectButton.addEventListener('click', async () => {
             if (typeof window.ethereum !== 'undefined') {
                 try {
-                    // Request to connect to MetaMask
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    
                     provider = new ethers.providers.Web3Provider(window.ethereum);
                     signer = provider.getSigner();
                     contract = new ethers.Contract(contractAddress, contractABI, signer);
-                    
                     const userAddress = await signer.getAddress();
-                    statusDiv.textContent = `Connected: ${userAddress.substring(0, 6)}...${userAddress.substring(userAddress.length - 4)}`;
+                    statusDiv.textContent = `Connected: ${userAddress.substring(0, 6)}...`;
                     connectButton.style.display = 'none';
-                    dappDiv.style.display = 'block';
+                    
+                    const balance = await contract.balanceOf(userAddress);
+                    if (balance.toNumber() > 0) {
+                        redeemSection.style.display = 'block';
+                        const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
+                        tokenIdInput.value = userTokenId.toNumber();
+                    } else {
+                        buySection.style.display = 'block';
+                        await updateSeasonInfo();
+                    }
 
                 } catch (error) {
                     statusDiv.textContent = `Error connecting: ${error.message}`;
                 }
             } else {
-                statusDiv.textContent = "MetaMask not found! Please install the browser extension.";
+                statusDiv.textContent = "MetaMask not found!";
+            }
+        });
+
+        buyButton.addEventListener('click', async () => {
+            if (!contract || !currentPriceInWei) {
+                statusDiv.textContent = "Season data not loaded. Please try reconnecting.";
+                return;
+            }
+            try {
+                buyButton.disabled = true;
+                statusDiv.textContent = "Awaiting purchase confirmation in your wallet...";
+                const tx = await contract.buyMembership({ value: currentPriceInWei });
+                statusDiv.textContent = `Purchase transaction sent! Awaiting mining...`;
+                await tx.wait();
+                statusDiv.textContent = "Success! Share purchased! Please refresh the page to see the redeem section.";
+                buyButton.style.display = 'none';
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = `Error during purchase: ${error.reason || error.message}`;
+                buyButton.disabled = false;
             }
         });
 
         redeemButton.addEventListener('click', async () => {
             const tokenId = tokenIdInput.value;
-            if (!tokenId) {
-                statusDiv.textContent = "Please enter a Token ID.";
+            if (tokenId === "" || parseInt(tokenId) < 0) {
+                statusDiv.textContent = "Please enter a valid Token ID.";
                 return;
             }
-
-            if (!contract) {
-                statusDiv.textContent = "Contract not initialized. Please connect your wallet first.";
-                return;
-            }
-
             try {
                 redeemButton.disabled = true;
-                statusDiv.textContent = `Sending transaction to redeem token #${tokenId}... Please confirm in your wallet.`;
-                
-                const tx = await contract.redeemWeeklyBasket(tokenId);
-                statusDiv.textContent = `Transaction sent! Hash: ${tx.hash}. Awaiting mining...`;
-                
-                await tx.wait(); // Wait for the transaction to be mined
-                
-                statusDiv.textContent = `Success! Basket for Token ID #${tokenId} has been redeemed!`;
+                statusDiv.textContent = `Sending transaction to redeem the box for token #${tokenId}...`;
+                const tx = await contract.redeemWeeklyBox(tokenId);
+                statusDiv.textContent = `Transaction sent! Awaiting mining...`;
+                await tx.wait();
+                statusDiv.textContent = `Success! Box for Token ID #${tokenId} has been redeemed!`;
                 redeemButton.disabled = false;
-
-            } catch (error) {
+            } catch (error)
                 console.error(error);
                 statusDiv.textContent = `Error redeeming: ${error.reason || error.message}`;
                 redeemButton.disabled = false;
