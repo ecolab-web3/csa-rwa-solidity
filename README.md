@@ -47,30 +47,24 @@ The core idea is to transform a CSA "membership share" into an **ERC721Enumerabl
 
 ## Next Steps
 
-This is a functional prototype. For a production-ready project, the next steps focus on upgradability and user experience.
+This is a functional prototype. For a production-ready project, the next steps focus on upgradability, user experience, and security.
 
 ### 1. Implement an Upgradable Contract using the Proxy Pattern
 
 Smart contracts on the blockchain are immutable. To allow for future feature additions or bug fixes without forcing users to migrate to a new contract, the next logical step is to implement an upgradable contract.
 
-*   **What it is:** The Proxy Pattern separates the contract's data (state) from its logic. Users interact with a stable "Proxy" contract address, which forwards all calls to a "Logic" contract. The contract owner can then deploy a new version of the Logic contract and update the Proxy to point to it.
-*   **How to implement:** Using well-audited libraries like OpenZeppelin's Upgrades Contracts is the industry standard. This would involve restructuring the `CSA_RWA.sol` contract to be "upgrade-safe".
 *   **Benefits:** This would enable future evolution, such as transforming the contract from a single-farmer model into a multi-farmer platform using an **"Access List Model"** (where the owner can register multiple farmers) or a **"Factory Model"** (where any farmer can deploy their own CSA instance from a central factory contract).
 
 ### 2. Enhance DApp and Admin Panel UI/UX
 
-The current DApps are functional prototypes built with vanilla HTML/JS to prove the concept. A production version would require a significant design overhaul.
+The current DApps are functional prototypes built with vanilla HTML/JS. A production version would require a significant design overhaul.
 
-*   **User DApp (Interaction Pages):**
-    *   Migrate to a modern frontend framework for better state management and component reusability.
-    *   Implement a proper design system for a professional, responsive, and mobile-friendly interface.
-    *   Improve user feedback with modals, loading spinners, and success/error notifications instead of a simple status box.
-    *   Add features like a gallery to view the NFT "membership card", a history of redeemed boxes, and a progress bar for the current season.
+*   **User DApp (Interaction Pages):** Migrate to a modern frontend framework (React, Vue), implement a proper design system, improve user feedback with modals and notifications, and add features like an NFT gallery and redemption history.
+*   **Admin Panel (Registration Page):** Transform the single-form page into a comprehensive dashboard to display all created seasons and integrate UI components to call other `onlyOwner` functions.
 
-*   **Admin Panel (Registration Page):**
-    *   Transform the single-form page into a comprehensive **dashboard**.
-    *   Display a list of all created seasons with their key statistics (price, capacity, number of members, start/end dates).
-    *   Integrate UI components to call other `onlyOwner` functions from the contract, such as `closeSeasonSales` and `withdraw`, providing a complete management interface.
+### 3. Undergo a Professional Security Audit
+
+Before deploying to a mainnet and handling real value, a full audit by a reputable third-party security firm is essential. This process rigorously checks the smart contract code for vulnerabilities like reentrancy, integer overflows, access control issues, and other common attack vectors, ensuring the safety of user funds and the integrity of the system.
 
 ---
 
