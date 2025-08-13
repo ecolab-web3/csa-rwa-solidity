@@ -1,0 +1,20 @@
+{
+  "name": "csa-rwa-solidity",
+  "version": "1.0.0",
+  "description": "A smart contract prototype for a Community Supported Agriculture (CSA) system tokenized as a Real-World Asset (RWA).",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "deploy:fuji": "hardhat run scripts/deploy.ts --network fuji"
+  },
+  "author": "E-co.lab Dev Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "dotenv": "^17.2.1",
+    "hardhat": "^2.26.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0"
+  }
+}
