@@ -16,15 +16,15 @@ This repository contains a smart contract prototype that tokenizes a **Community
 This project has been successfully migrated to a professional **Hardhat environment**, rigorously tested, deployed, and verified on the **Avalanche Fuji Testnet**.
 ___
 
-## Live Demo & DApps
+## Live Demo & dApps
 
-You can interact with the live version of this project using the DApp prototypes below. Please make sure your wallet (e.g., MetaMask) is connected to the **Avalanche Fuji Testnet**.
+You can interact with the live version of this project using the dApp prototypes below. Please make sure your wallet (e.g., MetaMask) is connected to the **Avalanche Fuji Testnet**.
 
-### DApp Prototypes
+### dApp Prototypes
 
-*   **User DApp (Membership & Redemption):**
-    *   **[➡️ Interact with the DApp (english version)](https://ecolab-web3.github.io/csa-rwa-solidity/index-en.html)**
-    *   **[➡️ Interaja com o DApp (versão em português)](https://ecolab-web3.github.io/csa-rwa-solidity/index-pt_br.html)**
+*   **User dApp (Membership & Redemption):**
+    *   **[➡️ Interact with the dApp (english version)](https://ecolab-web3.github.io/csa-rwa-solidity/index-en.html)**
+    *   **[➡️ Interaja com o dApp (versão em português)](https://ecolab-web3.github.io/csa-rwa-solidity/index-pt_br.html)**
 
 *   **Admin Panel (Season Management):**
     *   **[➡️ Access the Admin Panel (english version, for contract owner only)](https://ecolab-web3.github.io/csa-rwa-solidity/admin-en.html)**
@@ -66,9 +66,9 @@ The core idea is to transform a CSA "membership share" into an **ERC721Enumerabl
 ### Key Concepts Implemented
 
 *   **Season Management**: The contract owner can create new harvest seasons via a dedicated admin panel.
-*   **Share Purchase (Minting)**: Community members can purchase a share through the DApp, which "mints" an NFT.
+*   **Share Purchase (Minting)**: Community members can purchase a share through the dApp, which "mints" an NFT.
 *   **Weekly Redemption**: The NFT owner can redeem their weekly product box.
-*   **Automated Token ID Discovery**: The DApp automatically detects if a user is a member and retrieves their Token ID.
+*   **Automated Token ID Discovery**: The dApp automatically detects if a user is a member and retrieves their Token ID.
 *   **Security and Transparency**: The contract is `Ownable` and the code is publicly verified.
 
 ---
@@ -85,9 +85,9 @@ As identified during the test coverage analysis, the next version of the contrac
 
 To allow for future feature additions or bug fixes without forcing users to migrate to a new contract, the next logical step is to implement an upgradable contract using OpenZeppelin's Upgrades Contracts. This would enable future evolution, such as transforming the contract into a multi-farmer platform.
 
-### 3. Enhance DApp and Admin Panel UI/UX
+### 3. Enhance dApp and Admin Panel UI/UX
 
-The current DApps are functional prototypes. A production version would require enhancing them with a modern framework and adding features like an NFT gallery, redemption history, and a more comprehensive admin dashboard.
+The current dApps are functional prototypes. A production version would require enhancing them with a modern framework and adding features like an NFT gallery, redemption history, and a more comprehensive admin dashboard.
 
 ### 4. Undergo a Professional Security Audit
 
@@ -104,5 +104,6 @@ Please feel free to fork the repo and create a pull request, or open an issue wi
 ---
 
 ## License
+
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
