@@ -1,5 +1,7 @@
 # CSA as RWA: A Smart Contract Prototype in Solidity
 
+If you find our work valuable, please consider giving us a star on GitHub!
+
 ![Language](https://img.shields.io/badge/Language-Solidity-orange)
 ![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji-red)
 ![Verified Contract](https://img.shields.io/badge/Contract-Verified-green)
@@ -107,3 +109,4 @@ Please feel free to fork the repo and create a pull request, or open an issue wi
 
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
