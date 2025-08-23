@@ -11,6 +11,15 @@ If you find our work valuable, please consider giving us a star on GitHub!
 
 ___
 
+## Official E-co.lab Links
+
+*   **Official Website:** [ecolab-web3.github.io](https://ecolab-web3.github.io/)
+*   **Whitepaper:** [e-co-lab.gitbook.io/whitepaper](https://e-co-lab.gitbook.io/whitepaper)
+*   **Discord Community:** [discord.gg/Q6BNyUDNtm](https://discord.gg/Q6BNyUDNtm)
+*   **Twitter:** [x.com/ecolab_web3](https://x.com/ecolab_web3)
+
+___
+
 ## About The Project
 
 This repository contains a smart contract prototype that tokenizes a **Community Supported Agriculture (CSA)** membership share as a **Real World Asset (RWA)** on the blockchain.
@@ -109,4 +118,5 @@ Please feel free to fork the repo and create a pull request, or open an issue wi
 
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
 
