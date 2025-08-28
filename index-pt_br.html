@@ -16,6 +16,22 @@
         .section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #eee; }
         .season-card { border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
         .season-card small { display:block; margin-top:5px; color: #555; }
+        
+        /* --- NEW: Debug Panel Styles --- */
+        #debugPanel {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background-color: #222;
+            color: #0f0;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            opacity: 0.9;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
@@ -25,12 +41,9 @@
     <button id="connectButton">Conectar Carteira</button>
     <hr>
     
-    <!-- This section will be dynamically populated with all available seasons -->
     <div id="seasonsForSaleSection" class="section" style="display:none;">
         <h3>Temporadas Abertas para Compra</h3>
-        <div id="seasonsList">
-            <!-- Available seasons will be injected here by JavaScript -->
-        </div>
+        <div id="seasonsList"></div>
     </div>
 
     <div id="redeemSection" class="section" style="display:none;">
@@ -43,16 +56,22 @@
 
     <div id="status">Conecte sua carteira para começar...</div>
 
+    <!-- --- NEW: Debug Panel --- -->
+    <div id="debugPanel">
+        <strong>Debug Info</strong><br>
+        Status: Disconnected
+    </div>
+
     <script>
         // --- DOM Element References ---
         const connectButton = document.getElementById('connectButton');
         const statusDiv = document.getElementById('status');
-        
         const seasonsForSaleSection = document.getElementById('seasonsForSaleSection');
         const seasonsList = document.getElementById('seasonsList');
         const redeemSection = document.getElementById('redeemSection');
         const redeemButton = document.getElementById('redeemButton');
         const tokenIdInput = document.getElementById('tokenId');
+        const debugPanel = document.getElementById('debugPanel');
 
         // --- Contract Configuration ---
         const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF";
@@ -71,75 +90,139 @@
         let provider, signer, contract;
 
         /**
-         * @notice Fetches season data by querying past 'SeasonCreated' events
-         * to determine the total number of seasons, then displays them.
+         * @notice Updates the debug panel with real-time connection info.
          */
+        async function updateDebugPanel(userAddress, network, latestBlock) {
+            debugPanel.innerHTML = `
+                <strong>Debug Info</strong><br>
+                Status: Connected<br>
+                Address: ${userAddress.substring(0,6)}...<br>
+                Network: ${network.name} (${network.chainId})<br>
+                Latest Block: <span id="blockNumber">${latestBlock}</span>
+            `;
+        }
+
+        /**
+         * @notice Main connection handler. Sets up provider, contract, and UI.
+         */
+        async function handleConnection() {
+            try {
+                // Use a generic provider to check for pre-connected accounts
+                if (!window.ethereum) {
+                    statusDiv.textContent = "MetaMask não encontrada!";
+                    return;
+                }
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+
+                // Request accounts if user clicks, or check existing if auto-connecting
+                await provider.send("eth_requestAccounts", []);
+                
+                const { chainId, name } = await provider.getNetwork();
+                if (chainId !== TARGET_NETWORK_ID) {
+                    statusDiv.textContent = `Rede errada! Por favor, conecte sua carteira à Avalanche Fuji Testnet (Chain ID ${TARGET_NETWORK_ID}).`;
+                    debugPanel.innerHTML = `<strong>Debug Info</strong><br>Status: Wrong Network<br>Connected to: ${name} (${chainId})`;
+                    return;
+                }
+
+                signer = provider.getSigner();
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                const userAddress = await signer.getAddress();
+                
+                // --- Live Connection Check ---
+                updateDebugPanel(userAddress, {name, chainId}, await provider.getBlockNumber());
+                provider.on('block', (blockNumber) => {
+                    const blockSpan = document.getElementById('blockNumber');
+                    if(blockSpan) blockSpan.textContent = blockNumber;
+                });
+
+                statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...`;
+                connectButton.style.display = 'none';
+                
+                const balance = await contract.balanceOf(userAddress);
+                if (balance.toNumber() > 0) {
+                    redeemSection.style.display = 'block';
+                    const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
+                    tokenIdInput.value = userTokenId.toNumber();
+                } else {
+                    seasonsForSaleSection.style.display = 'block';
+                    await loadSeasons();
+                }
+
+            } catch (error) {
+                statusDiv.textContent = `Erro ao conectar: ${error.message}`;
+                debugPanel.innerHTML = `<strong>Debug Info</strong><br>Status: Error<br>Message: ${error.message}`;
+            }
+        }
+        
+        /**
+         * @notice Tries to auto-connect if the user has previously connected.
+         */
+        async function tryAutoConnect() {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) {
+                        console.log("Found previously connected account. Auto-connecting...");
+                        await handleConnection();
+                    } else {
+                        console.log("No pre-connected account found.");
+                    }
+                } catch (error) {
+                    console.error("Auto-connect failed:", error);
+                }
+            }
+        }
+
+        // --- Event Listeners and Initializers ---
+        connectButton.addEventListener('click', handleConnection);
+
+        // Auto-connect on page load
+        window.addEventListener('DOMContentLoaded', tryAutoConnect);
+
+        // --- Other Functions (loadSeasons, handleBuyClick, redeem) remain the same ---
+
         async function loadSeasons() {
             try {
                 seasonsList.innerHTML = 'Buscando histórico de temporadas na blockchain...';
-                
                 const logs = await contract.queryFilter('SeasonCreated', 0, 'latest');
                 const seasonsCount = logs.length;
-                console.log(`Found ${seasonsCount} 'SeasonCreated' events.`);
 
                 if (seasonsCount === 0) {
                     seasonsList.innerHTML = '<p>Nenhuma temporada foi criada ainda.</p>';
                     return;
                 }
-
                 seasonsList.innerHTML = ''; 
 
                 for (let i = 0; i < seasonsCount; i++) {
                     const season = await contract.seasons(i);
-                    
                     if (season.isOpenForSale) {
                         const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
                         const isLastSeason = (i === seasonsCount - 1);
-
                         const seasonCard = document.createElement('div');
                         seasonCard.className = 'season-card';
-                        
-                        seasonCard.innerHTML = `
-                            <h4>${season.name} (ID: ${i})</h4>
-                            <p><strong>Preço:</strong> ${priceInAvax} AVAX</p>
-                            <p><strong>Cotas vendidas:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p>
-                            <button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Comprar Cota</button>
-                            ${!isLastSeason ? '<small>A compra só é permitida para a temporada mais recente.</small>' : ''}
-                        `;
+                        seasonCard.innerHTML = `<h4>${season.name} (ID: ${i})</h4><p><strong>Preço:</strong> ${priceInAvax} AVAX</p><p><strong>Cotas vendidas:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p><button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Comprar Cota</button>${!isLastSeason ? '<small>A compra só é permitida para a temporada mais recente.</small>' : ''}`;
                         seasonsList.appendChild(seasonCard);
                     }
                 }
-                
-                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => {
-                    button.addEventListener('click', handleBuyClick);
-                });
-
+                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => button.addEventListener('click', handleBuyClick));
             } catch (error) {
-                // --- IMPROVED: More descriptive error message ---
                 seasonsList.innerHTML = `<p>Erro ao carregar as temporadas. Isso pode ocorrer por uma instabilidade temporária na rede de testes. Por favor, tente recarregar a página em alguns instantes.</p>`;
                 console.error("Error fetching seasons data:", error);
             }
         }
         
-        /**
-         * @notice Handles the click event for a "Buy" button.
-         */
         async function handleBuyClick(event) {
             const button = event.target;
             const priceWei = button.dataset.priceWei;
-
             try {
                 button.disabled = true;
                 button.textContent = 'Aguardando...';
                 statusDiv.textContent = `Iniciando compra para a temporada mais recente...`;
-
                 const tx = await contract.buyMembership({ value: priceWei });
                 statusDiv.textContent = `Transação de compra enviada! Aguardando...`;
-                
                 await tx.wait();
                 statusDiv.textContent = "Sucesso! Cota comprada! Atualize a página para ver a seção de resgate.";
                 button.style.display = 'none';
-
             } catch (error) {
                 console.error(error);
                 statusDiv.textContent = `Erro na compra: ${error.reason || error.message}`;
@@ -148,53 +231,7 @@
             }
         }
 
-        // --- Main Event Listeners ---
-
-        /**
-         * @notice Connects to the user's wallet, checks the network, and sets up the dApp state.
-         */
-        connectButton.addEventListener('click', async () => {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-
-                    // --- Network check ---
-                    const { chainId } = await provider.getNetwork();
-                    if (chainId !== TARGET_NETWORK_ID) {
-                        statusDiv.textContent = `Rede errada! Por favor, conecte sua carteira à Avalanche Fuji Testnet (Chain ID ${TARGET_NETWORK_ID}).`;
-                        return; // Stop the execution if the network is wrong.
-                    }
-
-                    signer = provider.getSigner();
-                    contract = new ethers.Contract(contractAddress, contractABI, signer);
-                    const userAddress = await signer.getAddress();
-                    statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...`;
-                    connectButton.style.display = 'none';
-                    
-                    const balance = await contract.balanceOf(userAddress);
-                    if (balance.toNumber() > 0) {
-                        redeemSection.style.display = 'block';
-                        const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
-                        tokenIdInput.value = userTokenId.toNumber();
-                    } else {
-                        seasonsForSaleSection.style.display = 'block';
-                        await loadSeasons();
-                    }
-
-                } catch (error) {
-                    statusDiv.textContent = `Erro ao conectar: ${error.message}`;
-                }
-            } else {
-                statusDiv.textContent = "MetaMask não encontrada!";
-            }
-        });
-
-        /**
-         * @notice Handles the weekly box redemption.
-         */
         redeemButton.addEventListener('click', async () => {
-            // This function's logic remains the same.
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {
                 statusDiv.textContent = "Por favor, insira um Token ID válido.";
