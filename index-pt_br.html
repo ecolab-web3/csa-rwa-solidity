@@ -16,22 +16,6 @@
         .section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #eee; }
         .season-card { border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
         .season-card small { display:block; margin-top:5px; color: #555; }
-        
-        /* --- Debug Panel Styles --- */
-        #debugPanel {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background-color: #222;
-            color: #0f0;
-            padding: 10px;
-            border: 1px solid #444;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            opacity: 0.9;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
@@ -56,12 +40,6 @@
 
     <div id="status">Conecte sua carteira para começar...</div>
 
-    <!-- --- Debug Panel --- -->
-    <div id="debugPanel">
-        <strong>Debug Info</strong><br>
-        Status: Disconnected
-    </div>
-
     <script>
         // --- DOM Element References ---
         const connectButton = document.getElementById('connectButton');
@@ -71,7 +49,6 @@
         const redeemSection = document.getElementById('redeemSection');
         const redeemButton = document.getElementById('redeemButton');
         const tokenIdInput = document.getElementById('tokenId');
-        const debugPanel = document.getElementById('debugPanel');
 
         // --- Contract Configuration ---
         const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF";
@@ -89,25 +66,12 @@
         let provider, signer, contract;
 
         /**
-         * @notice Updates the debug panel with real-time connection info.
-         */
-        async function updateDebugPanel(userAddress, network, latestBlock) {
-            debugPanel.innerHTML = `
-                <strong>Debug Info</strong><br>
-                Status: Connected<br>
-                Address: ${userAddress.substring(0,6)}...<br>
-                Network: ${network.name} (${network.chainId})<br>
-                Latest Block: <span id="blockNumber">${latestBlock}</span>
-            `;
-        }
-
-        /**
-         * @notice NEW ROBUST METHOD: Fetches seasons by iteratively calling the contract's
-         * `seasons(id)` function until it reverts, which indicates the end of the array.
+         * @notice Fetches seasons by iteratively calling the contract's
+         * `seasons(id)` function until it reverts, indicating the end of the array.
          */
         async function loadSeasons() {
             try {
-                seasonsList.innerHTML = 'Buscando temporadas uma a uma (método robusto)...';
+                seasonsList.innerHTML = 'Buscando temporadas...';
                 const foundSeasons = [];
                 let seasonId = 0;
                 
@@ -117,8 +81,7 @@
                         foundSeasons.push(season);
                         seasonId++;
                     } catch (error) {
-                        // This error is EXPECTED. It means we've reached an invalid index.
-                        // We can now break the loop.
+                        // This error is expected, it means we've reached an invalid index.
                         console.log(`Search finished. Found ${seasonId} seasons.`);
                         break;
                     }
@@ -157,8 +120,9 @@
             }
         }
 
-        // --- Connection Handling (Mainly Unchanged) ---
-        
+        /**
+         * @notice Main connection handler. Sets up provider, contract, and UI.
+         */
         async function handleConnection() {
             try {
                 if (!window.ethereum) {
@@ -168,10 +132,9 @@
                 provider = new ethers.providers.Web3Provider(window.ethereum);
                 await provider.send("eth_requestAccounts", []);
                 
-                const { chainId, name } = await provider.getNetwork();
+                const { chainId } = await provider.getNetwork();
                 if (chainId !== TARGET_NETWORK_ID) {
                     statusDiv.textContent = `Rede errada! Por favor, conecte sua carteira à Avalanche Fuji Testnet (Chain ID ${TARGET_NETWORK_ID}).`;
-                    debugPanel.innerHTML = `<strong>Debug Info</strong><br>Status: Wrong Network<br>Connected to: ${name} (${chainId})`;
                     return;
                 }
 
@@ -179,12 +142,6 @@
                 contract = new ethers.Contract(contractAddress, contractABI, signer);
                 const userAddress = await signer.getAddress();
                 
-                updateDebugPanel(userAddress, {name, chainId}, await provider.getBlockNumber());
-                provider.on('block', (blockNumber) => {
-                    const blockSpan = document.getElementById('blockNumber');
-                    if(blockSpan) blockSpan.textContent = blockNumber;
-                });
-
                 statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...`;
                 connectButton.style.display = 'none';
                 
@@ -200,10 +157,12 @@
 
             } catch (error) {
                 statusDiv.textContent = `Erro ao conectar: ${error.message}`;
-                debugPanel.innerHTML = `<strong>Debug Info</strong><br>Status: Error<br>Message: ${error.message}`;
             }
         }
         
+        /**
+         * @notice Tries to auto-connect if the user has previously connected.
+         */
         async function tryAutoConnect() {
             if (window.ethereum) {
                 try {
@@ -215,10 +174,11 @@
             }
         }
 
+        // --- Event Listeners and Initializers ---
         window.addEventListener('DOMContentLoaded', tryAutoConnect);
         connectButton.addEventListener('click', handleConnection);
 
-        // --- Other Functions (handleBuyClick, redeem) remain the same ---
+        // --- Other Functions ---
         async function handleBuyClick(event) {
             const button = event.target;
             const priceWei = button.dataset.priceWei;
@@ -238,6 +198,7 @@
                 button.textContent = 'Comprar Cota';
             }
         }
+        
         redeemButton.addEventListener('click', async () => {
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {

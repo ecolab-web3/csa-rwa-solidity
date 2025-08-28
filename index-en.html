@@ -4,30 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CSA dApp Prototype</title>
-    <!-- Import ethers.js library -->
+    <!-- Imports the ethers.js library -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
         button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; }
         button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
         input { font-size: 1em; padding: 0.5em; width: 80px; }
-        input:read-only { background-color: #f0f0f0; } /* Style for read-only field */
+        input:read-only { background-color: #f0f0f0; }
         #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; word-break: break-all; }
         .section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #eee; }
+        .season-card { border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
+        .season-card small { display:block; margin-top:5px; color: #555; }
     </style>
 </head>
 <body>
-    <h1>CSA (Community Supported Agriculture) dApp Prototype</h1>
-    <p>Interact with the CSA / RWA (Real World Assets) smart contract directly from here!</p>
+    <h1>CSA dApp Prototype (Community Supported Agriculture)</h1>
+    <p>Interact with the CSA / RWA (Real World Asset) smart contract directly from here!</p>
     
     <button id="connectButton">Connect Wallet</button>
     <hr>
     
-    <div id="buySection" class="section" style="display:none;">
-        <h3>Buy Membership Share (Mint NFT)</h3>
-        <p>It looks like you're not a member yet. Click the button to buy your share!</p>
-        <p><strong>Price:</strong> <span id="priceDisplay">Loading...</span> AVAX</p>
-        <button id="buyButton">Buy Share</button>
+    <div id="seasonsForSaleSection" class="section" style="display:none;">
+        <h3>Seasons Open for Purchase</h3>
+        <div id="seasonsList"></div>
     </div>
 
     <div id="redeemSection" class="section" style="display:none;">
@@ -41,17 +41,18 @@
     <div id="status">Connect your wallet to get started...</div>
 
     <script>
+        // --- DOM Element References ---
         const connectButton = document.getElementById('connectButton');
         const statusDiv = document.getElementById('status');
-        
-        const buySection = document.getElementById('buySection');
+        const seasonsForSaleSection = document.getElementById('seasonsForSaleSection');
+        const seasonsList = document.getElementById('seasonsList');
         const redeemSection = document.getElementById('redeemSection');
-        const buyButton = document.getElementById('buyButton');
-        const priceDisplay = document.getElementById('priceDisplay');
         const redeemButton = document.getElementById('redeemButton');
         const tokenIdInput = document.getElementById('tokenId');
 
-        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF"; 
+        // --- Contract Configuration ---
+        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF";
+        const TARGET_NETWORK_ID = 43113; // Fuji Testnet Chain ID
         
         const contractABI = [
             "function buyMembership() payable",
@@ -61,68 +62,143 @@
             "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
         ];
 
-        let provider, signer, contract, currentPriceInWei;
+        // --- Global State Variables ---
+        let provider, signer, contract;
 
-        async function updateSeasonInfo() {
+        /**
+         * @notice Fetches seasons by iteratively calling the contract's
+         * `seasons(id)` function until it reverts, indicating the end of the array.
+         */
+        async function loadSeasons() {
             try {
-                const seasonData = await contract.seasons(0);
-                currentPriceInWei = seasonData.membershipPrice;
-                priceDisplay.textContent = ethers.utils.formatEther(currentPriceInWei);
+                seasonsList.innerHTML = 'Fetching seasons...';
+                const foundSeasons = [];
+                let seasonId = 0;
+                
+                while (true) {
+                    try {
+                        const season = await contract.seasons(seasonId);
+                        foundSeasons.push(season);
+                        seasonId++;
+                    } catch (error) {
+                        // This error is expected, it means we've reached an invalid index.
+                        console.log(`Search finished. Found ${seasonId} seasons.`);
+                        break;
+                    }
+                }
+
+                const seasonsCount = foundSeasons.length;
+                if (seasonsCount === 0) {
+                    seasonsList.innerHTML = '<p>No seasons have been created yet.</p>';
+                    return;
+                }
+
+                seasonsList.innerHTML = ''; 
+
+                foundSeasons.forEach((season, index) => {
+                    if (season.isOpenForSale) {
+                        const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
+                        const isLastSeason = (index === seasonsCount - 1);
+                        const seasonCard = document.createElement('div');
+                        seasonCard.className = 'season-card';
+                        seasonCard.innerHTML = `
+                            <h4>${season.name} (ID: ${index})</h4>
+                            <p><strong>Price:</strong> ${priceInAvax} AVAX</p>
+                            <p><strong>Shares sold:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p>
+                            <button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Purchase Share</button>
+                            ${!isLastSeason ? '<small>Purchasing is only allowed for the latest season.</small>' : ''}
+                        `;
+                        seasonsList.appendChild(seasonCard);
+                    }
+                });
+                
+                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => button.addEventListener('click', handleBuyClick));
+
             } catch (error) {
-                priceDisplay.textContent = "Error";
-                console.error("Error fetching season data:", error);
+                seasonsList.innerHTML = `<p>An unexpected error occurred while communicating with the blockchain.</p>`;
+                console.error("Unexpected error in loadSeasons:", error);
             }
         }
 
-        connectButton.addEventListener('click', async () => {
-            if (typeof window.ethereum !== 'undefined') {
-                try {
-                    await window.ethereum.request({ method: 'eth_requestAccounts' });
-                    provider = new ethers.providers.Web3Provider(window.ethereum);
-                    signer = provider.getSigner();
-                    contract = new ethers.Contract(contractAddress, contractABI, signer);
-                    const userAddress = await signer.getAddress();
-                    statusDiv.textContent = `Connected: ${userAddress.substring(0, 6)}...`;
-                    connectButton.style.display = 'none';
-                    
-                    const balance = await contract.balanceOf(userAddress);
-                    if (balance.toNumber() > 0) {
-                        redeemSection.style.display = 'block';
-                        const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
-                        tokenIdInput.value = userTokenId.toNumber();
-                    } else {
-                        buySection.style.display = 'block';
-                        await updateSeasonInfo();
-                    }
-
-                } catch (error) {
-                    statusDiv.textContent = `Error connecting: ${error.message}`;
-                }
-            } else {
-                statusDiv.textContent = "MetaMask not found!";
-            }
-        });
-
-        buyButton.addEventListener('click', async () => {
-            if (!contract || !currentPriceInWei) {
-                statusDiv.textContent = "Season data not loaded. Please try reconnecting.";
-                return;
-            }
+        /**
+         * @notice Main connection handler. Sets up provider, contract, and UI.
+         */
+        async function handleConnection() {
             try {
-                buyButton.disabled = true;
-                statusDiv.textContent = "Awaiting purchase confirmation in your wallet...";
-                const tx = await contract.buyMembership({ value: currentPriceInWei });
-                statusDiv.textContent = `Purchase transaction sent! Awaiting mining...`;
+                if (!window.ethereum) {
+                    statusDiv.textContent = "MetaMask not found!";
+                    return;
+                }
+                provider = new ethers.providers.Web3Provider(window.ethereum);
+                await provider.send("eth_requestAccounts", []);
+                
+                const { chainId } = await provider.getNetwork();
+                if (chainId !== TARGET_NETWORK_ID) {
+                    statusDiv.textContent = `Wrong network! Please connect your wallet to the Avalanche Fuji Testnet (Chain ID ${TARGET_NETWORK_ID}).`;
+                    return;
+                }
+
+                signer = provider.getSigner();
+                contract = new ethers.Contract(contractAddress, contractABI, signer);
+                const userAddress = await signer.getAddress();
+                
+                statusDiv.textContent = `Connected: ${userAddress.substring(0, 6)}...`;
+                connectButton.style.display = 'none';
+                
+                const balance = await contract.balanceOf(userAddress);
+                if (balance.toNumber() > 0) {
+                    redeemSection.style.display = 'block';
+                    const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
+                    tokenIdInput.value = userTokenId.toNumber();
+                } else {
+                    seasonsForSaleSection.style.display = 'block';
+                    await loadSeasons();
+                }
+
+            } catch (error) {
+                statusDiv.textContent = `Connection error: ${error.message}`;
+            }
+        }
+        
+        /**
+         * @notice Tries to auto-connect if the user has previously connected.
+         */
+        async function tryAutoConnect() {
+            if (window.ethereum) {
+                try {
+                    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                    if (accounts.length > 0) await handleConnection();
+                } catch (error) {
+                    console.error("Auto-connect failed:", error);
+                }
+            }
+        }
+
+        // --- Event Listeners and Initializers ---
+        window.addEventListener('DOMContentLoaded', tryAutoConnect);
+        connectButton.addEventListener('click', handleConnection);
+
+        // --- Other Functions ---
+        async function handleBuyClick(event) {
+            const button = event.target;
+            const priceWei = button.dataset.priceWei;
+            try {
+                button.disabled = true;
+                button.textContent = 'Waiting...';
+                statusDiv.textContent = `Initiating purchase for the latest season...`;
+                const tx = await contract.buyMembership({ value: priceWei });
+                statusDiv.textContent = `Purchase transaction sent! Awaiting confirmation...`;
                 await tx.wait();
                 statusDiv.textContent = "Success! Share purchased! Please refresh the page to see the redeem section.";
-                buyButton.style.display = 'none';
+                button.style.display = 'none';
             } catch (error) {
                 console.error(error);
-                statusDiv.textContent = `Error during purchase: ${error.reason || error.message}`;
-                buyButton.disabled = false;
+                statusDiv.textContent = `Purchase error: ${error.reason || error.message}`;
+                button.disabled = false;
+                button.textContent = 'Purchase Share';
             }
-        });
-
+        }
+        
         redeemButton.addEventListener('click', async () => {
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {
@@ -133,13 +209,13 @@
                 redeemButton.disabled = true;
                 statusDiv.textContent = `Sending transaction to redeem the box for token #${tokenId}...`;
                 const tx = await contract.redeemWeeklyBox(tokenId);
-                statusDiv.textContent = `Transaction sent! Awaiting mining...`;
+                statusDiv.textContent = `Transaction sent! Awaiting confirmation...`;
                 await tx.wait();
                 statusDiv.textContent = `Success! Box for Token ID #${tokenId} has been redeemed!`;
-                redeemButton.disabled = false;
-            } catch (error)
+            } catch (error) {
                 console.error(error);
-                statusDiv.textContent = `Error redeeming: ${error.reason || error.message}`;
+                statusDiv.textContent = `Redemption error: ${error.reason || error.message}`;
+            } finally {
                 redeemButton.disabled = false;
             }
         });
