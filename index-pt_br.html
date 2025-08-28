@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protótipo DApp CSA</title>
-    <!-- Importa a biblioteca ethers.js -->
+    <title>Protótipo dApp CSA</title>
+    <!-- Imports the ethers.js library -->
     <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
     <style>
         body { font-family: sans-serif; max-width: 600px; margin: 2em auto; padding: 1em; border: 1px solid #ccc; border-radius: 8px; }
         button { font-size: 1em; padding: 0.5em 1em; cursor: pointer; border-radius: 4px; border: 1px solid #007bff; background-color: #007bff; color: white; }
         button:disabled { background-color: #ccc; border-color: #ccc; cursor: not-allowed; }
         input { font-size: 1em; padding: 0.5em; width: 80px; }
-        input:read-only { background-color: #f0f0f0; } /* Estilo para campo bloqueado */
+        input:read-only { background-color: #f0f0f0; }
         #status { margin-top: 1em; padding: 0.5em; background-color: #f0f0f0; border-radius: 4px; word-break: break-all; }
         .section { margin-top: 1.5em; padding-top: 1em; border-top: 1px solid #eee; }
+        .season-card { border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
+        .season-card small { display:block; margin-top:5px; color: #555; }
     </style>
 </head>
 <body>
-    <h1>Protótipo de DApp para CSA (Comunidade que Sustenta a Agricultura)</h1>
+    <h1>Protótipo de dApp para CSA (Comunidade que Sustenta a Agricultura)</h1>
     <p>Interaja com o contrato inteligente CSA / RWA (Ativos do Mundo Real) diretamente daqui!</p>
     
     <button id="connectButton">Conectar Carteira</button>
     <hr>
     
-    <div id="buySection" class="section" style="display:none;">
-        <h3>Comprar Cota de Membro (Mintar NFT)</h3>
-        <p>Parece que você ainda não é membro. Clique no botão para comprar sua cota!</p>
-        <p><strong>Preço:</strong> <span id="priceDisplay">Carregando...</span> AVAX</p>
-        <button id="buyButton">Comprar Cota</button>
+    <!-- This section will be dynamically populated with all available seasons -->
+    <div id="seasonsForSaleSection" class="section" style="display:none;">
+        <h3>Temporadas Abertas para Compra</h3>
+        <div id="seasonsList">
+            <!-- Available seasons will be injected here by JavaScript -->
+        </div>
     </div>
 
     <div id="redeemSection" class="section" style="display:none;">
@@ -41,39 +44,124 @@
     <div id="status">Conecte sua carteira para começar...</div>
 
     <script>
+        // --- DOM Element References ---
         const connectButton = document.getElementById('connectButton');
         const statusDiv = document.getElementById('status');
         
-        const buySection = document.getElementById('buySection');
+        const seasonsForSaleSection = document.getElementById('seasonsForSaleSection');
+        const seasonsList = document.getElementById('seasonsList');
         const redeemSection = document.getElementById('redeemSection');
-        const buyButton = document.getElementById('buyButton');
-        const priceDisplay = document.getElementById('priceDisplay');
         const redeemButton = document.getElementById('redeemButton');
         const tokenIdInput = document.getElementById('tokenId');
 
+        // --- Contract Configuration ---
         const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF"; 
         
         const contractABI = [
+            // Functions
             "function buyMembership() payable",
             "function redeemWeeklyBox(uint256 tokenId)",
             "function seasons(uint256) view returns (string name, uint256 membershipPrice, uint256 totalMemberships, uint256 soldMemberships, uint256 startTime, uint256 endTime, bool isOpenForSale)",
             "function balanceOf(address owner) view returns (uint256)",
-            "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
+            "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
+            // Events - This is crucial for querying historical data
+            "event SeasonCreated(uint256 seasonId, string name, uint256 price, uint256 capacity)"
         ];
 
-        let provider, signer, contract, currentPriceInWei;
+        // --- Global State Variables ---
+        let provider, signer, contract;
 
-        async function updateSeasonInfo() {
+        /**
+         * @notice Fetches season data by querying past 'SeasonCreated' events
+         * to determine the total number of seasons, then displays them.
+         */
+        async function loadSeasons() {
             try {
-                const seasonData = await contract.seasons(0);
-                currentPriceInWei = seasonData.membershipPrice;
-                priceDisplay.textContent = ethers.utils.formatEther(currentPriceInWei);
+                seasonsList.innerHTML = 'Buscando histórico de temporadas na blockchain...';
+                
+                // Query the blockchain for all past logs of the 'SeasonCreated' event.
+                const logs = await contract.queryFilter('SeasonCreated', 0, 'latest');
+                const seasonsCount = logs.length;
+                console.log(`Found ${seasonsCount} 'SeasonCreated' events.`);
+
+                if (seasonsCount === 0) {
+                    seasonsList.innerHTML = '<p>Nenhuma temporada foi criada ainda.</p>';
+                    return;
+                }
+
+                seasonsList.innerHTML = ''; // Clear loading message
+
+                // Loop through each season based on the number of events found.
+                for (let i = 0; i < seasonsCount; i++) {
+                    const season = await contract.seasons(i);
+                    
+                    // Only display seasons that are marked as open for sale.
+                    if (season.isOpenForSale) {
+                        const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
+                        // The original contract only allows buying the LATEST season.
+                        const isLastSeason = (i === seasonsCount - 1);
+
+                        const seasonCard = document.createElement('div');
+                        seasonCard.className = 'season-card';
+                        
+                        // Dynamically create the HTML for the season card.
+                        // Disable the buy button if it's not the last season.
+                        seasonCard.innerHTML = `
+                            <h4>${season.name} (ID: ${i})</h4>
+                            <p><strong>Preço:</strong> ${priceInAvax} AVAX</p>
+                            <p><strong>Cotas vendidas:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p>
+                            <button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Comprar Cota</button>
+                            ${!isLastSeason ? '<small>A compra só é permitida para a temporada mais recente.</small>' : ''}
+                        `;
+                        seasonsList.appendChild(seasonCard);
+                    }
+                }
+                
+                // Attach the click event handler ONLY to the enabled buy buttons.
+                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => {
+                    button.addEventListener('click', handleBuyClick);
+                });
+
             } catch (error) {
-                priceDisplay.textContent = "Erro";
-                console.error("Error fetching season data:", error);
+                seasonsList.innerHTML = '<p>Erro ao carregar as temporadas.</p>';
+                console.error("Error fetching seasons data:", error);
+            }
+        }
+        
+        /**
+         * @notice Handles the click event for a "Buy" button.
+         * Calls the contract's buyMembership function.
+         */
+        async function handleBuyClick(event) {
+            const button = event.target;
+            const priceWei = button.dataset.priceWei;
+
+            try {
+                button.disabled = true;
+                button.textContent = 'Aguardando...';
+                statusDiv.textContent = `Iniciando compra para a temporada mais recente...`;
+
+                // The contract function takes no arguments, it automatically sells the last season.
+                const tx = await contract.buyMembership({ value: priceWei });
+                statusDiv.textContent = `Transação de compra enviada! Aguardando...`;
+                
+                await tx.wait();
+                statusDiv.textContent = "Sucesso! Cota comprada! Atualize a página para ver a seção de resgate.";
+                button.style.display = 'none';
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = `Erro na compra: ${error.reason || error.message}`;
+                button.disabled = false;
+                button.textContent = 'Comprar Cota';
             }
         }
 
+        // --- Main Event Listeners ---
+
+        /**
+         * @notice Connects to the user's wallet (e.g., MetaMask) and sets up the dApp state.
+         */
         connectButton.addEventListener('click', async () => {
             if (typeof window.ethereum !== 'undefined') {
                 try {
@@ -85,14 +173,17 @@
                     statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...`;
                     connectButton.style.display = 'none';
                     
+                    // Check if the user already owns a membership NFT.
                     const balance = await contract.balanceOf(userAddress);
                     if (balance.toNumber() > 0) {
+                        // If user is a member, show the redeem section.
                         redeemSection.style.display = 'block';
                         const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
                         tokenIdInput.value = userTokenId.toNumber();
                     } else {
-                        buySection.style.display = 'block';
-                        await updateSeasonInfo();
+                        // If user is not a member, show the purchase section and load seasons.
+                        seasonsForSaleSection.style.display = 'block';
+                        await loadSeasons();
                     }
 
                 } catch (error) {
@@ -103,26 +194,9 @@
             }
         });
 
-        buyButton.addEventListener('click', async () => {
-            if (!contract || !currentPriceInWei) {
-                statusDiv.textContent = "Dados da temporada não carregados. Tente reconectar.";
-                return;
-            }
-            try {
-                buyButton.disabled = true;
-                statusDiv.textContent = "Aguardando confirmação da compra na sua carteira...";
-                const tx = await contract.buyMembership({ value: currentPriceInWei });
-                statusDiv.textContent = `Transação de compra enviada! Aguardando...`;
-                await tx.wait();
-                statusDiv.textContent = "Sucesso! Cota comprada! Atualize a página para ver a seção de resgate.";
-                buyButton.style.display = 'none';
-            } catch (error) {
-                console.error(error);
-                statusDiv.textContent = `Erro na compra: ${error.reason || error.message}`;
-                buyButton.disabled = false;
-            }
-        });
-
+        /**
+         * @notice Handles the weekly box redemption.
+         */
         redeemButton.addEventListener('click', async () => {
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {
@@ -136,10 +210,10 @@
                 statusDiv.textContent = `Transação enviada! Aguardando...`;
                 await tx.wait();
                 statusDiv.textContent = `Sucesso! Box para o Token ID #${tokenId} resgatado!`;
-                redeemButton.disabled = false;
             } catch (error) {
                 console.error(error);
                 statusDiv.textContent = `Erro ao resgatar: ${error.reason || error.message}`;
+            } finally {
                 redeemButton.disabled = false;
             }
         });
