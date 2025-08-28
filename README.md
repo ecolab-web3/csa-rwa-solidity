@@ -1,5 +1,12 @@
 # CSA as RWA: A Smart Contract Prototype in Solidity
 
+![Language](https://img.shields.io/badge/Language-Solidity-orange)
+![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji-red)
+![Verified Contract](https://img.shields.io/badge/Contract-Verified-green)
+![License](https://img.shields.io/badge/License-MIT-blue)
+![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
+![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
+
 If you find our work valuable, please consider giving us a star on GitHub!
 
 > 🚀 **We're in Avalanche Retro9000!**
@@ -7,13 +14,6 @@ If you find our work valuable, please consider giving us a star on GitHub!
 > E-co.lab has been officially approved and is now listed in the "L1s & Infrastructure Tooling" round. If you're an active participant in the Avalanche ecosystem and believe in our mission, your vote would mean the world to us.
 >
 > **[Click here to view our project and vote!](https://retro9000.avax.network/discover-builders/cmebmfjtw02g5103tb8aalzvi)**
-
-![Language](https://img.shields.io/badge/Language-Solidity-orange)
-![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji-red)
-![Verified Contract](https://img.shields.io/badge/Contract-Verified-green)
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
-![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
 
 ___
 
@@ -34,6 +34,18 @@ This project has been successfully migrated to a professional **Hardhat environm
 ___
 
 ## Live Demo & dApps
+
+### Frontend dApp
+-   **Wallet Integration:** Connects seamlessly to browser wallets like MetaMask.
+-   **Auto-Connection & Network Validation:** Remembers connected wallets and verifies the correct network.
+-   **Dynamic Season Display:** Robustly fetches and displays all available seasons from the contract.
+-   **Multi-language Support:** Available in both English and Portuguese.
+
+### Smart Contract
+-   **Season Management:** Owner can create new harvest seasons with specific names, prices, and member capacity.
+-   **NFT Membership:** Users can purchase a membership (`buyMembership()`), which mints an ERC721 NFT to their wallet.
+-   **Weekly Redemption:** NFT owners can redeem their weekly product box, with the contract enforcing one redemption per week per share.
+-   **Standards-Based:** Built on OpenZeppelin's `ERC721Enumerable` and `Ownable` contracts.
 
 You can interact with the live version of this project using the dApp prototypes below. Please make sure your wallet (e.g., MetaMask) is connected to the **Avalanche Fuji Testnet**.
 
