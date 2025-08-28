@@ -2,6 +2,12 @@
 
 If you find our work valuable, please consider giving us a star on GitHub!
 
+> 🚀 **We're in Avalanche Retro9000!**
+>
+> E-co.lab has been officially approved and is now listed in the "L1s & Infrastructure Tooling" round. If you're an active participant in the Avalanche ecosystem and believe in our mission, your vote would mean the world to us.
+>
+> **[Click here to view our project and vote!](https://retro9000.avax.network/discover-builders/cmebmfjtw02g5103tb8aalzvi)**
+
 ![Language](https://img.shields.io/badge/Language-Solidity-orange)
 ![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji-red)
 ![Verified Contract](https://img.shields.io/badge/Contract-Verified-green)
@@ -103,6 +109,14 @@ The current dApps are functional prototypes. A production version would require 
 ### 4. Undergo a Professional Security Audit
 
 Before deploying to a mainnet and handling real value, a full audit by a reputable third-party security firm is essential to ensure the safety of the system.
+
+___
+
+## Ecosystem Recognition
+
+E-co.lab is a recognized participant in the **[Avalanche Retro9000](https://retro9000.avax.network/)** program, a retroactive public goods funding initiative by the Avalanche Foundation. Our project has been approved for the "L1s & Infrastructure Tooling" round and is currently live for community voting by participants in the Avalanche ecosystem.
+
+You can view our official submission and support our mission here: **[E-co.lab on Retro9000](https://retro9000.avax.network/discover-builders/cmebmfjtw02g5103tb8aalzvi)**
 
 ___
 

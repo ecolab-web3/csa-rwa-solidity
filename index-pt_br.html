@@ -55,16 +55,15 @@
         const tokenIdInput = document.getElementById('tokenId');
 
         // --- Contract Configuration ---
-        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF"; 
+        const contractAddress = "0x1c96D0701B1bd9c3CC24fAcca3A4d68ED8Bfb1AF";
+        const TARGET_NETWORK_ID = 43113; // Fuji Testnet Chain ID
         
         const contractABI = [
-            // Functions
             "function buyMembership() payable",
             "function redeemWeeklyBox(uint256 tokenId)",
             "function seasons(uint256) view returns (string name, uint256 membershipPrice, uint256 totalMemberships, uint256 soldMemberships, uint256 startTime, uint256 endTime, bool isOpenForSale)",
             "function balanceOf(address owner) view returns (uint256)",
             "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-            // Events - This is crucial for querying historical data
             "event SeasonCreated(uint256 seasonId, string name, uint256 price, uint256 capacity)"
         ];
 
@@ -79,7 +78,6 @@
             try {
                 seasonsList.innerHTML = 'Buscando histórico de temporadas na blockchain...';
                 
-                // Query the blockchain for all past logs of the 'SeasonCreated' event.
                 const logs = await contract.queryFilter('SeasonCreated', 0, 'latest');
                 const seasonsCount = logs.length;
                 console.log(`Found ${seasonsCount} 'SeasonCreated' events.`);
@@ -89,23 +87,18 @@
                     return;
                 }
 
-                seasonsList.innerHTML = ''; // Clear loading message
+                seasonsList.innerHTML = ''; 
 
-                // Loop through each season based on the number of events found.
                 for (let i = 0; i < seasonsCount; i++) {
                     const season = await contract.seasons(i);
                     
-                    // Only display seasons that are marked as open for sale.
                     if (season.isOpenForSale) {
                         const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
-                        // The original contract only allows buying the LATEST season.
                         const isLastSeason = (i === seasonsCount - 1);
 
                         const seasonCard = document.createElement('div');
                         seasonCard.className = 'season-card';
                         
-                        // Dynamically create the HTML for the season card.
-                        // Disable the buy button if it's not the last season.
                         seasonCard.innerHTML = `
                             <h4>${season.name} (ID: ${i})</h4>
                             <p><strong>Preço:</strong> ${priceInAvax} AVAX</p>
@@ -117,20 +110,19 @@
                     }
                 }
                 
-                // Attach the click event handler ONLY to the enabled buy buttons.
                 document.querySelectorAll('.buy-button:not([disabled])').forEach(button => {
                     button.addEventListener('click', handleBuyClick);
                 });
 
             } catch (error) {
-                seasonsList.innerHTML = '<p>Erro ao carregar as temporadas.</p>';
+                // --- IMPROVED: More descriptive error message ---
+                seasonsList.innerHTML = `<p>Erro ao carregar as temporadas. Isso pode ocorrer por uma instabilidade temporária na rede de testes. Por favor, tente recarregar a página em alguns instantes.</p>`;
                 console.error("Error fetching seasons data:", error);
             }
         }
         
         /**
          * @notice Handles the click event for a "Buy" button.
-         * Calls the contract's buyMembership function.
          */
         async function handleBuyClick(event) {
             const button = event.target;
@@ -141,7 +133,6 @@
                 button.textContent = 'Aguardando...';
                 statusDiv.textContent = `Iniciando compra para a temporada mais recente...`;
 
-                // The contract function takes no arguments, it automatically sells the last season.
                 const tx = await contract.buyMembership({ value: priceWei });
                 statusDiv.textContent = `Transação de compra enviada! Aguardando...`;
                 
@@ -160,28 +151,33 @@
         // --- Main Event Listeners ---
 
         /**
-         * @notice Connects to the user's wallet (e.g., MetaMask) and sets up the dApp state.
+         * @notice Connects to the user's wallet, checks the network, and sets up the dApp state.
          */
         connectButton.addEventListener('click', async () => {
             if (typeof window.ethereum !== 'undefined') {
                 try {
                     await window.ethereum.request({ method: 'eth_requestAccounts' });
                     provider = new ethers.providers.Web3Provider(window.ethereum);
+
+                    // --- Network check ---
+                    const { chainId } = await provider.getNetwork();
+                    if (chainId !== TARGET_NETWORK_ID) {
+                        statusDiv.textContent = `Rede errada! Por favor, conecte sua carteira à Avalanche Fuji Testnet (Chain ID ${TARGET_NETWORK_ID}).`;
+                        return; // Stop the execution if the network is wrong.
+                    }
+
                     signer = provider.getSigner();
                     contract = new ethers.Contract(contractAddress, contractABI, signer);
                     const userAddress = await signer.getAddress();
                     statusDiv.textContent = `Conectado: ${userAddress.substring(0, 6)}...`;
                     connectButton.style.display = 'none';
                     
-                    // Check if the user already owns a membership NFT.
                     const balance = await contract.balanceOf(userAddress);
                     if (balance.toNumber() > 0) {
-                        // If user is a member, show the redeem section.
                         redeemSection.style.display = 'block';
                         const userTokenId = await contract.tokenOfOwnerByIndex(userAddress, 0);
                         tokenIdInput.value = userTokenId.toNumber();
                     } else {
-                        // If user is not a member, show the purchase section and load seasons.
                         seasonsForSaleSection.style.display = 'block';
                         await loadSeasons();
                     }
@@ -198,6 +194,7 @@
          * @notice Handles the weekly box redemption.
          */
         redeemButton.addEventListener('click', async () => {
+            // This function's logic remains the same.
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {
                 statusDiv.textContent = "Por favor, insira um Token ID válido.";
