@@ -17,7 +17,7 @@
         .season-card { border: 1px solid #ddd; padding: 1em; margin-bottom: 1em; border-radius: 5px; }
         .season-card small { display:block; margin-top:5px; color: #555; }
         
-        /* --- NEW: Debug Panel Styles --- */
+        /* --- Debug Panel Styles --- */
         #debugPanel {
             position: fixed;
             bottom: 10px;
@@ -56,7 +56,7 @@
 
     <div id="status">Conecte sua carteira para começar...</div>
 
-    <!-- --- NEW: Debug Panel --- -->
+    <!-- --- Debug Panel --- -->
     <div id="debugPanel">
         <strong>Debug Info</strong><br>
         Status: Disconnected
@@ -82,8 +82,7 @@
             "function redeemWeeklyBox(uint256 tokenId)",
             "function seasons(uint256) view returns (string name, uint256 membershipPrice, uint256 totalMemberships, uint256 soldMemberships, uint256 startTime, uint256 endTime, bool isOpenForSale)",
             "function balanceOf(address owner) view returns (uint256)",
-            "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-            "event SeasonCreated(uint256 seasonId, string name, uint256 price, uint256 capacity)"
+            "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)"
         ];
 
         // --- Global State Variables ---
@@ -103,18 +102,70 @@
         }
 
         /**
-         * @notice Main connection handler. Sets up provider, contract, and UI.
+         * @notice NEW ROBUST METHOD: Fetches seasons by iteratively calling the contract's
+         * `seasons(id)` function until it reverts, which indicates the end of the array.
          */
+        async function loadSeasons() {
+            try {
+                seasonsList.innerHTML = 'Buscando temporadas uma a uma (método robusto)...';
+                const foundSeasons = [];
+                let seasonId = 0;
+                
+                while (true) {
+                    try {
+                        const season = await contract.seasons(seasonId);
+                        foundSeasons.push(season);
+                        seasonId++;
+                    } catch (error) {
+                        // This error is EXPECTED. It means we've reached an invalid index.
+                        // We can now break the loop.
+                        console.log(`Search finished. Found ${seasonId} seasons.`);
+                        break;
+                    }
+                }
+
+                const seasonsCount = foundSeasons.length;
+                if (seasonsCount === 0) {
+                    seasonsList.innerHTML = '<p>Nenhuma temporada foi criada ainda.</p>';
+                    return;
+                }
+
+                seasonsList.innerHTML = ''; 
+
+                foundSeasons.forEach((season, index) => {
+                    if (season.isOpenForSale) {
+                        const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
+                        const isLastSeason = (index === seasonsCount - 1);
+                        const seasonCard = document.createElement('div');
+                        seasonCard.className = 'season-card';
+                        seasonCard.innerHTML = `
+                            <h4>${season.name} (ID: ${index})</h4>
+                            <p><strong>Preço:</strong> ${priceInAvax} AVAX</p>
+                            <p><strong>Cotas vendidas:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p>
+                            <button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Comprar Cota</button>
+                            ${!isLastSeason ? '<small>A compra só é permitida para a temporada mais recente.</small>' : ''}
+                        `;
+                        seasonsList.appendChild(seasonCard);
+                    }
+                });
+                
+                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => button.addEventListener('click', handleBuyClick));
+
+            } catch (error) {
+                seasonsList.innerHTML = `<p>Ocorreu um erro inesperado ao se comunicar com a blockchain.</p>`;
+                console.error("Unexpected error in loadSeasons:", error);
+            }
+        }
+
+        // --- Connection Handling (Mainly Unchanged) ---
+        
         async function handleConnection() {
             try {
-                // Use a generic provider to check for pre-connected accounts
                 if (!window.ethereum) {
                     statusDiv.textContent = "MetaMask não encontrada!";
                     return;
                 }
                 provider = new ethers.providers.Web3Provider(window.ethereum);
-
-                // Request accounts if user clicks, or check existing if auto-connecting
                 await provider.send("eth_requestAccounts", []);
                 
                 const { chainId, name } = await provider.getNetwork();
@@ -128,7 +179,6 @@
                 contract = new ethers.Contract(contractAddress, contractABI, signer);
                 const userAddress = await signer.getAddress();
                 
-                // --- Live Connection Check ---
                 updateDebugPanel(userAddress, {name, chainId}, await provider.getBlockNumber());
                 provider.on('block', (blockNumber) => {
                     const blockSpan = document.getElementById('blockNumber');
@@ -154,63 +204,21 @@
             }
         }
         
-        /**
-         * @notice Tries to auto-connect if the user has previously connected.
-         */
         async function tryAutoConnect() {
             if (window.ethereum) {
                 try {
                     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-                    if (accounts.length > 0) {
-                        console.log("Found previously connected account. Auto-connecting...");
-                        await handleConnection();
-                    } else {
-                        console.log("No pre-connected account found.");
-                    }
+                    if (accounts.length > 0) await handleConnection();
                 } catch (error) {
                     console.error("Auto-connect failed:", error);
                 }
             }
         }
 
-        // --- Event Listeners and Initializers ---
+        window.addEventListener('DOMContentLoaded', tryAutoConnect);
         connectButton.addEventListener('click', handleConnection);
 
-        // Auto-connect on page load
-        window.addEventListener('DOMContentLoaded', tryAutoConnect);
-
-        // --- Other Functions (loadSeasons, handleBuyClick, redeem) remain the same ---
-
-        async function loadSeasons() {
-            try {
-                seasonsList.innerHTML = 'Buscando histórico de temporadas na blockchain...';
-                const logs = await contract.queryFilter('SeasonCreated', 0, 'latest');
-                const seasonsCount = logs.length;
-
-                if (seasonsCount === 0) {
-                    seasonsList.innerHTML = '<p>Nenhuma temporada foi criada ainda.</p>';
-                    return;
-                }
-                seasonsList.innerHTML = ''; 
-
-                for (let i = 0; i < seasonsCount; i++) {
-                    const season = await contract.seasons(i);
-                    if (season.isOpenForSale) {
-                        const priceInAvax = ethers.utils.formatEther(season.membershipPrice);
-                        const isLastSeason = (i === seasonsCount - 1);
-                        const seasonCard = document.createElement('div');
-                        seasonCard.className = 'season-card';
-                        seasonCard.innerHTML = `<h4>${season.name} (ID: ${i})</h4><p><strong>Preço:</strong> ${priceInAvax} AVAX</p><p><strong>Cotas vendidas:</strong> ${season.soldMemberships.toString()} / ${season.totalMemberships.toString()}</p><button class="buy-button" data-price-wei="${season.membershipPrice.toString()}" ${!isLastSeason ? 'disabled' : ''}>Comprar Cota</button>${!isLastSeason ? '<small>A compra só é permitida para a temporada mais recente.</small>' : ''}`;
-                        seasonsList.appendChild(seasonCard);
-                    }
-                }
-                document.querySelectorAll('.buy-button:not([disabled])').forEach(button => button.addEventListener('click', handleBuyClick));
-            } catch (error) {
-                seasonsList.innerHTML = `<p>Erro ao carregar as temporadas. Isso pode ocorrer por uma instabilidade temporária na rede de testes. Por favor, tente recarregar a página em alguns instantes.</p>`;
-                console.error("Error fetching seasons data:", error);
-            }
-        }
-        
+        // --- Other Functions (handleBuyClick, redeem) remain the same ---
         async function handleBuyClick(event) {
             const button = event.target;
             const priceWei = button.dataset.priceWei;
@@ -230,7 +238,6 @@
                 button.textContent = 'Comprar Cota';
             }
         }
-
         redeemButton.addEventListener('click', async () => {
             const tokenId = tokenIdInput.value;
             if (tokenId === "" || parseInt(tokenId) < 0) {
