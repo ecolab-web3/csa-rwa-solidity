@@ -1,11 +1,22 @@
 # CSA as RWA: A Smart Contract Prototype in Solidity
 
+If you find our work valuable, please consider giving us a star on GitHub!
+
 ![Language](https://img.shields.io/badge/Language-Solidity-orange)
 ![Blockchain](https://img.shields.io/badge/Blockchain-Avalanche_Fuji-red)
 ![Verified Contract](https://img.shields.io/badge/Contract-Verified-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
 ![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
+
+___
+
+## Official E-co.lab Links
+
+*   **Official Website:** [ecolab-web3.github.io](https://ecolab-web3.github.io/)
+*   **Whitepaper:** [e-co-lab.gitbook.io/whitepaper](https://e-co-lab.gitbook.io/whitepaper)
+*   **Discord Community:** [discord.gg/Q6BNyUDNtm](https://discord.gg/Q6BNyUDNtm)
+*   **Twitter:** [x.com/ecolab_web3](https://x.com/ecolab_web3)
 
 ___
 
@@ -105,4 +116,7 @@ Please feel free to fork the repo and create a pull request, or open an issue wi
 
 ## License
 
+
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+
