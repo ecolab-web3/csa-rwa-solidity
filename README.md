@@ -30,6 +30,8 @@ This repository is a Hardhat-based boilerplate. To get started and scaffold your
     ```
 This interactive script will configure the project for you, creating your initial smart contract and preparing the environment.
 
+Follow the instructions printed in your terminal to deploy and configure the entire system.
+
 ---
 
 ## Official E-co.lab Links

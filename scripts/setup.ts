@@ -2,6 +2,7 @@
 import * as readline from 'readline';
 import * as fs from 'fs';
 import * as path from 'path';
+import 'dotenv/config'; // Load .env file if it exists
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -14,8 +15,46 @@ function question(query: string): Promise<string> {
   });
 }
 
+async function checkAndCreateEnv() {
+  const envPath = path.join(__dirname, '../.env');
+
+  if (fs.existsSync(envPath) && process.env.PRIVATE_KEY && process.env.PRIVATE_KEY.length > 60) {
+    console.log("✅ .env file found and configured.");
+    return true;
+  }
+
+  console.log("\n⚠️  .env file not found or is incomplete.");
+  console.log("I will create a `.env.example` file for you now.");
+
+  const envTemplate = `
+# RPC URL for Avalanche Fuji Testnet
+FUJI_RPC_URL="https://api.avax-test.network/ext/bc/C/rpc"
+
+# Your private key from a TEST wallet (NEVER a main wallet)
+# IMPORTANT: It must start with '0x'
+PRIVATE_KEY=""
+`;
+  
+  fs.writeFileSync(path.join(__dirname, '../.env.example'), envTemplate.trim());
+  
+  console.log("\nACTION REQUIRED:");
+  console.log("1. I've created a file named `.env.example` in your project root.");
+  console.log("2. Please RENAME it to `.env`.");
+  console.log("3. Open the new `.env` file and PASTE your test wallet's private key.");
+  console.log("4. Save the file and run `npx hardhat setup` again.");
+
+  return false;
+}
+
 async function main() {
-  console.log("--- E-co.lab CSA Boilerplate Setup ---");
+  console.log("--- E-co.lab Boilerplate Setup ---");
+
+  const isEnvReady = await checkAndCreateEnv();
+  if (!isEnvReady) {
+    rl.close();
+    return;
+  }
+  
   console.log("This script will generate a deployment script for your CSA project.");
 
   const contractName = "CSA_RWA"; // The contract we are deploying
@@ -55,10 +94,11 @@ main().catch((error) => {
   
   console.log("\n✅ Successfully created `scripts/deploy-csa.ts`!");
   console.log("\nNext steps:");
-  console.log("1. Edit your `.env` file with your private key and RPC URL.");
-  console.log(`2. Fund your deployer address on the ${network} network.`);
-  console.log(`3. Run the deployment script: npx hardhat run scripts/deploy-csa.ts --network ${network}`);
+  console.log(`1. Fund your deployer address on the ${network} network.`);
+  console.log(`2. Run the deployment script: npx hardhat run scripts/deploy-csa.ts --network ${network}`);
   
+  console.log("\nSetup complete! You can now proceed with the deployment.");
+
   rl.close();
 }
 
