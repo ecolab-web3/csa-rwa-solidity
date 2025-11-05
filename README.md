@@ -7,6 +7,8 @@
 ![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
 ![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
 
+___
+
 ## Quick Start
 
 This repository is a Hardhat-based boilerplate. To get started and scaffold your own project from this template, follow these steps:
