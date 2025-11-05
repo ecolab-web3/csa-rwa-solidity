@@ -7,13 +7,24 @@
 ![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
 ![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
 
-If you find our work valuable, please consider giving us a star on GitHub!
+## Quick Start
 
-> 🚀 **We're in Avalanche Retro9000!**
->
-> E-co.lab has been officially approved and is now listed in the "L1s & Infrastructure Tooling" round. If you're an active participant in the Avalanche ecosystem and believe in our mission, your vote would mean the world to us.
->
-> **[Click here to view our project and vote!](https://retro9000.avax.network/discover-builders/cmebmfjtw02g5103tb8aalzvi)**
+This repository is a Hardhat-based boilerplate. To get started and scaffold your own project from this template, follow these steps:
+
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/ecolab-web3/csa-rwa-solidity.git
+    cd csa-rwa-solidity
+    ```
+2.  **Install dependencies:**
+    ```sh
+    npm install
+    ```
+3.  **Run the setup command:**
+    ```sh
+    npx hardhat setup
+    ```
+This interactive script will configure the project for you, creating your initial smart contract and preparing the environment.
 
 ___
 
