@@ -9,7 +9,7 @@ If you find our work valuable, please consider giving us a star on GitHub!
 ![Solidity Version](https://img.shields.io/badge/Solidity-0.8.20-yellow.svg)
 ![Framework](https://img.shields.io/badge/Framework-Hardhat-purple.svg)
 
-___
+---
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ This repository is a Hardhat-based boilerplate. To get started and scaffold your
     ```
 This interactive script will configure the project for you, creating your initial smart contract and preparing the environment.
 
-___
+---
 
 ## Official E-co.lab Links
 
@@ -39,14 +39,14 @@ ___
 *   **Discord Community:** [discord.gg/mrSuw8AfjC](https://discord.gg/mrSuw8AfjC)
 *   **Twitter:** [x.com/ecolab_web3](https://x.com/ecolab_web3)
 
-___
+---
 
 ## About The Project
 
 This repository contains a smart contract prototype that tokenizes a **Community Supported Agriculture (CSA)** membership share as a **Real World Asset (RWA)** on the blockchain.
 
 This project has been successfully migrated to a professional **Hardhat environment**, rigorously tested, deployed, and verified on the **Avalanche Fuji Testnet**.
-___
+---
 
 ## Live Demo & dApps
 
@@ -137,7 +137,7 @@ The current dApps are functional prototypes. A production version would require 
 
 Before deploying to a mainnet and handling real value, a full audit by a reputable third-party security firm is essential to ensure the safety of the system.
 
-___
+---
 
 ## Ecosystem Recognition
 
@@ -145,7 +145,7 @@ E-co.lab is a recognized participant in the **[Avalanche Retro9000](https://retr
 
 You can view our official submission and support our mission here: **[E-co.lab on Retro9000](https://retro9000.avax.network/discover-builders/cmebmfjtw02g5103tb8aalzvi)**
 
-___
+---
 
 ## Contributing
 
