@@ -48,6 +48,7 @@ Follow the instructions printed in your terminal to deploy and configure the ent
 This repository contains a smart contract prototype that tokenizes a **Community Supported Agriculture (CSA)** membership share as a **Real World Asset (RWA)** on the blockchain.
 
 This project has been successfully migrated to a professional **Hardhat environment**, rigorously tested, deployed, and verified on the **Avalanche Fuji Testnet**.
+
 ---
 
 ## Live Demo & dApps
