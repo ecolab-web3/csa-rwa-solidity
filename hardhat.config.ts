@@ -31,21 +31,4 @@ const config: HardhatUserConfig = {
   },
 };
 
-// --- Our Custom Setup Task ---
-// (It now lives inside the config file for better organization)
-task("setup", "Generates the necessary deployment scripts for the project")
-  .setAction(async () => {
-    const { exec } = require("child_process");
-    console.log("Running interactive setup to generate deployment files...");
-    const setupScript = exec("ts-node scripts/setup.ts");
-    
-    setupScript.stdout.on('data', (data: any) => {
-        console.log(data);
-    });
-    setupScript.stderr.on('data', (data: any) => {
-        console.error(data);
-    });
-});
-
-
 export default config;

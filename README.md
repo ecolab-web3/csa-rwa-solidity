@@ -13,24 +13,26 @@ If you find our work valuable, please consider giving us a star on GitHub!
 
 ## Quick Start
 
-This repository is a Hardhat-based boilerplate. To get started and scaffold your own project from this template, follow these steps:
+This repository is a Hardhat-based boilerplate. To deploy this contract, follow these steps:
 
-1.  **Clone the repository:**
+1.  **Clone & Install:**
     ```sh
     git clone https://github.com/ecolab-web3/csa-rwa-solidity.git
     cd csa-rwa-solidity
-    ```
-2.  **Install dependencies:**
-    ```sh
     npm install
     ```
-3.  **Run the setup command:**
-    ```sh
-    npx hardhat setup
-    ```
-This interactive script will configure the project for you, creating your initial smart contract and preparing the environment.
+2.  **Configure Your Environment:**
+    *   This project requires an `.env` file with a private key and RPC URL.
+    *   **Rename** the `.env.example` file in the root directory to **`.env`**.
+    *   Open the new `.env` file and **add your test wallet's private key**.
 
-Follow the instructions printed in your terminal to deploy and configure the entire system.
+3.  **Deploy the Contract:**
+    *   Fund your test wallet with some Fuji AVAX from a faucet.
+    *   Run the deployment script:
+    ```sh
+    npx hardhat run scripts/deploy.ts --network fuji
+    ```
+The script will deploy the contract and print its address to your terminal.
 
 ---
 
