@@ -13,7 +13,7 @@ If you find our work valuable, please consider giving us a star on GitHub!
 
 ## Quick Start
 
-This repository is a Hardhat-based boilerplate. To deploy this contract, follow these steps:
+This repository is a Hardhat-based boilerplate for CSA RWAs. To get started and scaffold your own project from this template, follow these steps:
 
 1.  **Clone & Install:**
     ```sh
@@ -26,7 +26,7 @@ This repository is a Hardhat-based boilerplate. To deploy this contract, follow 
     *   **Rename** the `.env.example` file in the root directory to **`.env`**.
     *   Open the new `.env` file and **add your test wallet's private key**.
 
-2.  **Understand the Contract (Recommended):**
+3.  **Understand the Contract (Recommended):**
     *   Before deploying, take a moment to **read the rest of this README and browse the `contracts/` folder**.
     *   Understanding the smart contract's logic, its functions, and its purpose is a critical step for any developer.
 
