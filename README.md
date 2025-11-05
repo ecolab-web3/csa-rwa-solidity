@@ -32,7 +32,7 @@ ___
 
 *   **Official Website:** [ecolab-web3.github.io](https://ecolab-web3.github.io/)
 *   **Whitepaper:** [e-co-lab.gitbook.io/whitepaper](https://e-co-lab.gitbook.io/whitepaper)
-*   **Discord Community:** [discord.gg/Q6BNyUDNtm](https://discord.gg/Q6BNyUDNtm)
+*   **Discord Community:** [discord.gg/mrSuw8AfjC](https://discord.gg/mrSuw8AfjC)
 *   **Twitter:** [x.com/ecolab_web3](https://x.com/ecolab_web3)
 
 ___
